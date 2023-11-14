@@ -23,7 +23,7 @@ def prepare_conversation(
     try:
         # Fetch existing conversation
         conversation = find_conversation_by_id(user_id, chat_input.conversation_id)
-        logger.debug(f"Found conversation: {conversation}")
+        logger.debug(f"Found existing conversation: {conversation}")
         parent_id = chat_input.message.parent_message_id
     except RecordNotFoundError:
         logger.debug(
@@ -122,6 +122,8 @@ def chat(user_id: str, chat_input: ChatInput) -> ChatOutput:
 
     # Invoke Bedrock
     prompt = get_buffer_string(messages)
+    logger.debug(f"Invoke Bedrock with prompt: {prompt}")
+
     reply_txt = invoke(prompt=prompt, model=chat_input.message.model)
 
     # Issue id for new assistant message
