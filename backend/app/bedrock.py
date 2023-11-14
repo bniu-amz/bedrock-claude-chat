@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from app.config import GENERATION_CONFIG
 from app.utils import get_bedrock_client
