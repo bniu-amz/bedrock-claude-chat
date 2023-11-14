@@ -1,7 +1,10 @@
 import json
+import logging
 
 from app.config import GENERATION_CONFIG
 from app.utils import get_bedrock_client
+logger = logging.getLogger(__name__)
+
 
 client = get_bedrock_client()
 
@@ -43,10 +46,12 @@ def invoke(prompt: str, model: str) -> str:
     model_id = get_model_id(model)
     accept = "application/json"
     content_type = "application/json"
+    logger.debug(f"Bedrock Invoke model prompt: {prompt}")
 
     response = client.invoke_model(
         body=payload, modelId=model_id, accept=accept, contentType=content_type
     )
+    logger.debug(f"Bedrock Invoke model response: {response}")
 
     output_txt = _extract_output_text(model, response)
 
