@@ -3,11 +3,32 @@ import logging
 
 from app.config import GENERATION_CONFIG
 from app.utils import get_bedrock_client
+
+from langchain.embeddings import BedrockEmbeddings
+from langchain.llms.bedrock import Bedrock
+
+from langchain.chains.question_answering import load_qa_chain
+from langchain.indexes import VectorstoreIndexCreator
+from langchain.indexes.vectorstore import VectorStoreIndexWrapper
+
+from langchain.vectorstores import SingleStoreDB
+
 logger = logging.getLogger(__name__)
 
 
 client = get_bedrock_client()
 
+bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",
+                                       client=client)
+os.environ["SINGLESTOREDB_URL"] = "admin:amazonPW!@svc-53a789ca-e9f1-48e8-87b0-5ccf8edabdda-dml.aws-oregon-3.svc.singlestore.com:3306/titan_embedding"
+vectorstore_s2 = SingleStoreDB(bedrock_embeddings, table_name='shareholder_letter')
+wrapper_store_s2 = VectorStoreIndexWrapper(vectorstore=vectorstore_s2)
+
+llm = Bedrock(model_id="anthropic.claude-v2", 
+              client=client, 
+              model_kwargs={
+                  'max_tokens_to_sample': 200
+              })
 
 def _create_body(model: str, prompt: str):
     if model in ("claude-instant-v1", "claude-v2"):
@@ -41,18 +62,5 @@ def get_model_id(model: str) -> str:
 
 
 def invoke(prompt: str, model: str) -> str:
-    payload = _create_body(model, prompt)
-
-    model_id = get_model_id(model)
-    accept = "application/json"
-    content_type = "application/json"
-    logger.debug(f"Bedrock Invoke model prompt: {prompt}")
-
-    response = client.invoke_model(
-        body=payload, modelId=model_id, accept=accept, contentType=content_type
-    )
-    logger.debug(f"Bedrock Invoke model response: {response}")
-
-    output_txt = _extract_output_text(model, response)
-
+    output_txt = wrapper_store_s2.query(question=prompt, llm=llm)
     return output_txt
