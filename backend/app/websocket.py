@@ -98,10 +98,11 @@ def handler(event, context):
         return_source_documents=True,
         chain_type_kwargs={"prompt": PROMPT}
     )
+
+    query = message.message.content.body
+    logger.debug(f"invoke bedrock query: {query}")
     
-    logger.debug(f"invoke bedrock query: {message}")
-    
-    concatenated = qa({"query": message})
+    concatenated = qa({"query": query})
     
 
     # Append entire completion as the last message
