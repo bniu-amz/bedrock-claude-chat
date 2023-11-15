@@ -103,8 +103,8 @@ def handler(event, context):
         return_source_documents=True,
         chain_type_kwargs={"prompt": PROMPT}
     )
-
-    concatenated = qa({"query": chat_input.message.content.body})
+    query = chat_input.message.content.body
+    concatenated = qa({"query": query})
     
 
     # Append entire completion as the last message
