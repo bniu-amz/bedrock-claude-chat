@@ -99,8 +99,8 @@ def handler(event, context):
         chain_type_kwargs={"prompt": PROMPT}
     )
 
-    query = message
-    logger.debug(f"invoke bedrock query: {query}")
+    query = chat_input.message.content.body
+    logger.debug("invoke bedrock query: " + query)
     
     concatenated = qa({"query": query})
     
