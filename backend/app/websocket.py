@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+import os
 
 import boto3
 from app.auth import verify_token
@@ -11,7 +12,26 @@ from app.usecase import get_invoke_payload, prepare_conversation
 from app.utils import get_bedrock_client
 from ulid import ULID
 
+from langchain.embeddings import BedrockEmbeddings
+from langchain.llms.bedrock import Bedrock
+
+from langchain.vectorstores import SingleStoreDB
+
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+
 client = get_bedrock_client()
+
+bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",
+                                       client=client)
+os.environ["SINGLESTOREDB_URL"] = "admin:amazonPW!@svc-53a789ca-e9f1-48e8-87b0-5ccf8edabdda-dml.aws-oregon-3.svc.singlestore.com:3306/titan_embedding"
+vectorstore_s2 = SingleStoreDB(bedrock_embeddings, table_name='shareholder_letter')
+
+llm = Bedrock(model_id="anthropic.claude-v2", 
+              client=client, 
+              model_kwargs={
+                  'max_tokens_to_sample': 200
+              })
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -59,32 +79,33 @@ def handler(event, context):
 
     logger.debug(f"invoke bedrock body: {payload["body"]}")
 
+    
 
-    try:
-        # Invoke bedrock streaming api
-        response = client.invoke_model_with_response_stream(
-            body=payload["body"],
-            modelId=payload["model_id"],
-            accept=payload["accept"],
-            contentType=payload["content_type"],
-        )
-    except Exception as e:
-        print(f"Failed to invoke bedrock: {e}")
-        return {"statusCode": 500, "body": "Failed to invoke bedrock."}
+    prompt_template = """
 
-    stream = response.get("body")
-    completions = []
-    for chunk in generate_chunk(stream):
-        try:
-            # Send completion
-            gatewayapi.post_to_connection(ConnectionId=connection_id, Data=chunk)
-            chunk_data = json.loads(chunk.decode("utf-8"))
-            completions.append(chunk_data["completion"])
-        except Exception as e:
-            print(f"Failed to post message: {str(e)}")
-            return {"statusCode": 500, "body": "Failed to send message to connection."}
+    Human: Use the following pieces of context to provide a concise answer to the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
-    concatenated = "".join(completions)
+    {context}
+
+    Question: {question}
+
+    Assistant:"""
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
+
+    qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=vectorstore_s2.as_retriever(
+            search_type="similarity", search_kwargs={"k": 3}
+        ),
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": PROMPT}
+    )
+
+    concatenated = qa({"query": query})
+    
 
     # Append entire completion as the last message
     assistant_msg_id = str(ULID())
