@@ -63,5 +63,7 @@ def get_model_id(model: str) -> str:
 
 
 def invoke(prompt: str, model: str) -> str:
+    logger.debug(f"Bedrock Invoke prompt: {prompt}")
     output_txt = wrapper_store_s2.query(question=prompt, llm=llm)
+    logger.debug(f"Bedrock Invoke response {output_txt}")
     return output_txt
