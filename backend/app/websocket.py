@@ -77,7 +77,7 @@ def handler(event, context):
     user_msg_id, conversation = prepare_conversation(user_id, chat_input)
     payload = get_invoke_payload(conversation, chat_input)
 
-    logger.debug(f"invoke bedrock body: {payload["body"]}")
+    logger.debug(f"invoke bedrock payload: {payload}")
 
     
 
@@ -104,7 +104,7 @@ def handler(event, context):
         chain_type_kwargs={"prompt": PROMPT}
     )
 
-    concatenated = qa({"query": query})
+    concatenated = qa({"query": payload['body']})
     
 
     # Append entire completion as the last message
