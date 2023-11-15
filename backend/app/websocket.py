@@ -57,6 +57,9 @@ def handler(event, context):
     user_msg_id, conversation = prepare_conversation(user_id, chat_input)
     payload = get_invoke_payload(conversation, chat_input)
 
+    logger.debug(f"invoke bedrock body: {payload["body"]}")
+
+
     try:
         # Invoke bedrock streaming api
         response = client.invoke_model_with_response_stream(
