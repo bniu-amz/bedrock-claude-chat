@@ -64,6 +64,8 @@ def handler(event, context):
     gatewayapi = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
     chat_input = ChatInputWithToken(**json.loads(message))
+    query = chat_input.message.content.body
+
     logger.debug(f"Received chat input: {chat_input}")
 
     try:
@@ -99,7 +101,6 @@ def handler(event, context):
         chain_type_kwargs={"prompt": PROMPT}
     )
 
-    query = chat_input.message.content.body
     logger.debug("invoke bedrock query: " + query)
     
     concatenated = qa({"query": query})
