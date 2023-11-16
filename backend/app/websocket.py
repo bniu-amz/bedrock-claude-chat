@@ -13,12 +13,7 @@ from app.utils import get_bedrock_client
 from ulid import ULID
 
 from langchain.embeddings import BedrockEmbeddings
-from langchain.llms.bedrock import Bedrock
-
 from langchain.vectorstores import SingleStoreDB
-
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
 
 client = get_bedrock_client()
 
@@ -26,12 +21,6 @@ bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",
                                        client=client)
 os.environ["SINGLESTOREDB_URL"] = "admin:amazonPW!@svc-53a789ca-e9f1-48e8-87b0-5ccf8edabdda-dml.aws-oregon-3.svc.singlestore.com:3306/titan_embedding"
 vectorstore_s2 = SingleStoreDB(bedrock_embeddings, table_name='shareholder_letter')
-
-llm = Bedrock(model_id="anthropic.claude-v2", 
-              client=client, 
-              model_kwargs={
-                  'max_tokens_to_sample': 200
-              })
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
