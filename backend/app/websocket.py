@@ -104,7 +104,7 @@ def handler(event, context):
     logger.debug("invoke bedrock query: " + query)
     
     concatenated = qa({"query": query})
-    
+    logger.debug("invoke bedrock response concatenated: " + concatenated)    
 
     # Append entire completion as the last message
     assistant_msg_id = str(ULID())
