@@ -73,12 +73,10 @@ def handler(event, context):
     contexts = "\n".join(o.page_content for o in docs)
   
     prompt = """
-    Human: Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable.
+    Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable.
     """ + contexts + """
-    Question: """ + query + """
-    Assistant:"""
+    Question: """ + query
   
-    
     logger.debug("invoke bedrock prompt: " + prompt)    
   
     chat_input.message.content.body = prompt
