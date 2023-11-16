@@ -103,7 +103,8 @@ def handler(event, context):
 
     logger.debug("invoke bedrock query: " + query)
     
-    concatenated = qa({"query": query})
+    result = qa({"query": query})
+    concatenated = result['result']
     logger.debug("invoke bedrock response concatenated: " + concatenated)    
 
     # Append entire completion as the last message
