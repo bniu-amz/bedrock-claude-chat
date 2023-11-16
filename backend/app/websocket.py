@@ -69,14 +69,22 @@ def handler(event, context):
   
     query = chat_input.message.content.body
 
-    docs = vectorstore_s2.similarity_search(query)
-    contexts = "\n".join(o.page_content for o in docs)
+    docs = vectorstore_s2.similarity_search_with_relevance_scores(query)
+    contexts ='';
+    prompt = '';
   
-    prompt = """
-    Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable.
-    """ + contexts + """
-    Question: """ + query
-  
+    for doc, score in docs:
+      if score < -100:
+        contexts += " "+doc.page_content
+
+    if(contexts != ''):
+      prompt = """
+      Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable.
+      """ + contexts + """
+      Question: """ + query
+    else:
+      prompt = query
+      
     logger.debug("invoke bedrock prompt: " + prompt)    
   
     chat_input.message.content.body = prompt
