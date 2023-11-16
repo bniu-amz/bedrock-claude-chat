@@ -70,7 +70,7 @@ def handler(event, context):
     query = chat_input.message.content.body
 
     docs = vectorstore_s2.similarity_search(query)
-    contexts = "\n".join(o.page_content) for o in docs
+    contexts = "\n".join(o.page_content for o in docs)
   
     prompt = """
     Human: Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable.
