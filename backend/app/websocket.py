@@ -64,7 +64,6 @@ def handler(event, context):
     gatewayapi = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
     chat_input = ChatInputWithToken(**json.loads(message))
-    query = chat_input.message.content.body
 
     logger.debug(f"Received chat input: {chat_input}")
 
@@ -77,36 +76,48 @@ def handler(event, context):
 
     user_id = decoded["sub"]
     user_msg_id, conversation = prepare_conversation(user_id, chat_input)
-    payload = get_invoke_payload(conversation, chat_input)
+    
+  
+    query = chat_input.message.content.body
 
+    contexts = vectorstore_s2.similarity_search(query)
+
+    prompt = "Human: Use the following pieces of context to provide a concise answer to the question at the end. ignore the context if it's not applicable." + "".join(contexts) + "Question: " + query + "Assistant:"
+  
+    
+    logger.debug("invoke bedrock prompt: " + prompt)    
+  
+    chat_input.message.content.body = prompt
+  
+    payload = get_invoke_payload(conversation, chat_input)  
     logger.debug(f"invoke bedrock payload: {payload}")
 
-    prompt_template = """
-    Human: Use the following pieces of context to provide a concise answer to the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
-    {context}
-    Question: {question}
-    Assistant:"""
+    try:
+        # Invoke bedrock streaming api
+        response = client.invoke_model_with_response_stream(
+            body=payload["body"],
+            modelId=payload["model_id"],
+            accept=payload["accept"],
+            contentType=payload["content_type"],
+        )
+    except Exception as e:
+        print(f"Failed to invoke bedrock: {e}")
+        return {"statusCode": 500, "body": "Failed to invoke bedrock."}
+
+    stream = response.get("body")
+    completions = []
+    for chunk in generate_chunk(stream):
+        try:
+            # Send completion
+            gatewayapi.post_to_connection(ConnectionId=connection_id, Data=chunk)
+            chunk_data = json.loads(chunk.decode("utf-8"))
+            completions.append(chunk_data["completion"])
+        except Exception as e:
+            print(f"Failed to post message: {str(e)}")
+            return {"statusCode": 500, "body": "Failed to send message to connection."}
+
+    concatenated = "".join(completions)
   
-    PROMPT = PromptTemplate(
-        template=prompt_template, input_variables=["context", "question"]
-    )
-
-    qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vectorstore_s2.as_retriever(
-            search_type="similarity", search_kwargs={"k": 3}
-        ),
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": PROMPT}
-    )
-
-    logger.debug("invoke bedrock query: " + query)
-    
-    result = qa({"query": query})
-    concatenated = result['result']
-    logger.debug("invoke bedrock response concatenated: " + concatenated)    
-
     # Append entire completion as the last message
     assistant_msg_id = str(ULID())
     message = MessageModel(
